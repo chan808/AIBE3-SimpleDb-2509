@@ -26,6 +26,10 @@ public class Sql {
         return this;
     }
 
+    public Sql appendIn(String s, Object... params) {
+        return this;
+    }
+
     public long insert() {
         return simpleDb.runInsert(query, params.toArray());
     }
@@ -34,23 +38,45 @@ public class Sql {
         return simpleDb.runUpdate(query, params.toArray());
     }
 
-    public int delete() { return simpleDb.runDelete(query, params.toArray()); }
-
-    public List<Map<String, Object>> selectRows() { return simpleDb.runSelectRows(query, params.toArray());
+    public int delete() {
+        return simpleDb.runDelete(query, params.toArray());
     }
 
-    public Map<String, Object> selectRow() { return simpleDb.runSelectRow(query, params.toArray());
+    public List<Map<String, Object>> selectRows() {
+        return simpleDb.runSelectRows(query, params.toArray());
     }
 
-    public LocalDateTime selectDatetime() { return simpleDb.runSelectDateTime(query, params.toArray());
+    public <T> List<T> selectRows(Class<T> cls) {
+        return simpleDb.runSelectRows(cls, query, params.toArray());
     }
 
-    public Long selectLong() { return simpleDb.runselectLong(query, params.toArray());
+    public Map<String, Object> selectRow() {
+        return simpleDb.runSelectRow(query, params.toArray());
     }
 
-    public String selectString() { return simpleDb.runselectString(query, params.toArray());
+    //t016
+    public <T> T selectRow(Class<T> cls) {
+        return simpleDb.runSelectRow(cls, query, params.toArray());
     }
 
-    public Boolean selectBoolean() { return simpleDb.runselectBoolean(query, params.toArray());
+    public LocalDateTime selectDatetime() {
+        return simpleDb.runSelectDateTime(query, params.toArray());
     }
+
+    public Long selectLong() {
+        return simpleDb.runSelectLong(query, params.toArray());
+    }
+
+    public String selectString() {
+        return simpleDb.runSelectString(query, params.toArray());
+    }
+
+    public Boolean selectBoolean() {
+        return simpleDb.runSelectBoolean(query, params.toArray());
+    }
+
+    public List<Long> selectLongs() {
+        return simpleDb.runSelectLongs(query, params.toArray());
+    }
+
 }

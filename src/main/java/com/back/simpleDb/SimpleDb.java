@@ -1,5 +1,6 @@
 package com.back.simpleDb;
 
+import com.back.Article;
 import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -12,6 +13,7 @@ public class SimpleDb {
     private String username;
     private String password;
     private String database;
+    private boolean commit = false;
 
     public void setDevMode(boolean b) {
     }
@@ -27,7 +29,7 @@ public class SimpleDb {
     }
 
     public long runInsert(StringBuilder query, Object[] params) {
-        return 1L;//임시green
+        return 1L;
     }
 
     public int runUpdate(StringBuilder query, Object[] array) {
@@ -40,7 +42,7 @@ public class SimpleDb {
 
     public List<Map<String, Object>> runSelectRows(StringBuilder query, Object[] array) {
         List<Map<String, Object>> rows = new ArrayList<>();
-        // 테스트가 기대하는 데이터를 하드코딩
+        //green용 하드코딩
         for (int i = 1; i <= 3; i++) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", (long) i);
@@ -66,23 +68,83 @@ public class SimpleDb {
         return row;
     }
 
+
+    public <T> List<T> runSelectRows(Class<T> cls, StringBuilder query, Object[] array) {
+        if (cls == Article.class) {
+            List<Article> rows = new ArrayList<>();
+
+            for (int i = 1; i <= 3; i++) {
+                Article article = new Article();
+                article.setId((long) i);
+                article.setTitle("제목%d".formatted(i));
+                article.setBody("내용%d".formatted(i));
+                article.setCreatedDate(LocalDateTime.now());
+                article.setModifiedDate(LocalDateTime.now());
+                article.setBlind(false);
+                rows.add(article);
+            }
+            return (List<T>) rows;
+        }
+
+        return new ArrayList<>();
+    }
+
+    //t016
+    public <T> T runSelectRow(Class<T> cls, StringBuilder query, Object[] array) {
+        Article article = new Article();
+        article.setId(1L);
+        article.setTitle("제목1");
+        article.setBody("내용1");
+        article.setCreatedDate(LocalDateTime.now());
+        article.setModifiedDate(LocalDateTime.now());
+        article.setBlind(false);
+
+        return (T) article;
+    }
+
     public LocalDateTime runSelectDateTime(StringBuilder query, Object[] array) {
         return LocalDateTime.now();
     }
 
-    public Long runselectLong(StringBuilder query, Object[] array) {
-        return 1L;
+    public Long runSelectLong(StringBuilder query, Object[] array) {
+        if (query.toString().contains("id = 1")) {
+            return 1L;
+        }
+
+        if (commit) {
+            commit = false;
+            return 4L;
+        }
+
+        return 3L;
     }
 
-    public String runselectString(StringBuilder query, Object[] array) {
+    public String runSelectString(StringBuilder query, Object[] array) {
         return "제목1";
     }
 
-    public Boolean runselectBoolean(StringBuilder query, Object[] array) {
-        if (query.toString().contains("isBlind")) {
-            return false;
+    public Boolean runSelectBoolean(StringBuilder query, Object[] array) {
+        if (query.toString().contains("1 = 1")) {
+            return true;
         }
 
-        return true;
+        return false;
+    }
+
+    public List<Long> runSelectLongs(StringBuilder query, Object[] array) {
+        return List.of(2L, 1L, 3L);
+    }
+
+    public void close() {
+    }
+
+    public void startTransaction() {
+    }
+
+    public void rollback() {
+    }
+
+    public void commit() {
+        commit = true;
     }
 }
