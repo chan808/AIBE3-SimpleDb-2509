@@ -31,19 +31,19 @@ public class Sql {
     }
 
     public long insert() {
-        return simpleDb.runInsert(query, params.toArray());
+        return simpleDb.runInsert(query.toString(), params.toArray());
     }
 
     public int update() {
-        return simpleDb.runUpdate(query, params.toArray());
+        return simpleDb.runUpdate(query.toString(), params.toArray());
     }
 
     public int delete() {
-        return simpleDb.runDelete(query, params.toArray());
+        return simpleDb.runDelete(query.toString(), params.toArray());
     }
 
     public List<Map<String, Object>> selectRows() {
-        return simpleDb.runSelectRows(query, params.toArray());
+        return simpleDb.runSelectRows(query.toString(), params.toArray());
     }
 
     public <T> List<T> selectRows(Class<T> cls) {
@@ -51,7 +51,7 @@ public class Sql {
     }
 
     public Map<String, Object> selectRow() {
-        return simpleDb.runSelectRow(query, params.toArray());
+        return simpleDb.runSelectRow(query.toString(), params.toArray());
     }
 
     //t016

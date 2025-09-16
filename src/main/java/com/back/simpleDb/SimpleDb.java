@@ -3,67 +3,310 @@ package com.back.simpleDb;
 import com.back.Article;
 import lombok.AllArgsConstructor;
 
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
 
-@AllArgsConstructor
 public class SimpleDb {
     private String host;
     private String username;
     private String password;
     private String database;
-    private boolean commit = false;
+    private String url;
+    private boolean devMode = false;
 
+    //스레드별 커넥션 관리
+    private ThreadLocal<Connection> conHolder = new ThreadLocal<>();
+
+    public SimpleDb(String host, String username, String password, String database) {
+        this.host = host;
+        this.username = username;
+        this.password = password;
+        this.database = database;
+        this.url = "jdbc:mysql://" + host + "/" + database + "?useUnicode=true&characterEncoding=utf8&autoReconnect=true&serverTimezone=Asia/Seoul";
+    }
+
+    //로그 출력용 개발 모드
     public void setDevMode(boolean b) {
+        this.devMode = b;
     }
 
-    public void run(String dropTableIfExistsArticle) {
+    //스레드별 커넥션 실행
+    private Connection getConnection() throws SQLException {
+        Connection con = conHolder.get();
+        if (con == null || con.isClosed()) {
+            con = DriverManager.getConnection(url, username, password);
+            conHolder.set(con);
+        }
+        return con;
     }
 
-    public void run(String s, String title, String body, boolean isBlind) {
+    //현재 스레드의 커넥션 종료
+    public void close() {
+        Connection con = conHolder.get();
+        if (con != null) {
+            try {
+                if (!con.isClosed()) con.close();
+            } catch (SQLException e) {
+                System.out.println("DB 연결 종료 중 오류 발생: " + e.getMessage());
+            } finally {
+                conHolder.remove();
+            }
+        }
+    }
+
+    public void run(String sql, Object... params) {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (pstmt != null) try {
+                pstmt.close();
+            } catch (SQLException e) {
+            }
+        }
     }
 
     public Sql genSql() {
         return new Sql(this);
     }
 
-    public long runInsert(StringBuilder query, Object[] params) {
-        return 1L;
-    }
-
-    public int runUpdate(StringBuilder query, Object[] array) {
-        return 3;
-    }
-
-    public int runDelete(StringBuilder query, Object[] array) {
-        return 2;
-    }
-
-    public List<Map<String, Object>> runSelectRows(StringBuilder query, Object[] array) {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        //green용 하드코딩
-        for (int i = 1; i <= 3; i++) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", (long) i);
-            row.put("title", "제목%d".formatted(i));
-            row.put("body", "내용%d".formatted(i));
-            row.put("createdDate", LocalDateTime.now());
-            row.put("modifiedDate", LocalDateTime.now());
-            row.put("isBlind", false);
-            rows.add(row);
+    //t001
+    public long runInsert(String sql, Object[] params) {
+        if (devMode) {
+            System.out.printf("-----sql: %s | -----parameters: %s%n", sql, Arrays.toString(params));
         }
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+
+            pstmt.executeUpdate();
+            rs = pstmt.getGeneratedKeys();
+
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // 역순으로 닫기
+            if (rs != null) try {
+                rs.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            if (pstmt != null) try {
+                pstmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return -1;
+    }
+
+    //t002
+    public int runUpdate(String sql, Object[] params) {
+        if (devMode) {
+            System.out.printf("-----sql: %s | -----parameters: %s%n", sql, Arrays.toString(params));
+        }
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+
+            return pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (pstmt != null) try {
+                pstmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    //t003
+    public int runDelete(String sql, Object[] params) {
+        if (devMode) {
+            System.out.printf("-----sql: %s | -----parameters: %s%n", sql, Arrays.toString(params));
+        }
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+
+            return pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (pstmt != null) try {
+                pstmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    //t004
+    public List<Map<String, Object>> runSelectRows(String sql, Object[] params) {
+        if (devMode) {
+            System.out.printf("-----sql: %s | -----parameters: %s%n", sql, Arrays.toString(params));
+        }
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+
+            rs = pstmt.executeQuery();
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnLabel(i);
+                    Object value = rs.getObject(i);
+
+                    if (value instanceof Timestamp ts) {
+                        value = ts.toLocalDateTime();
+                    }
+
+                    row.put(columnName, value);
+                }
+                rows.add(row);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (rs != null) try {
+                rs.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            if (pstmt != null) try {
+                pstmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            if (con != null) try {
+                con.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
         return rows;
     }
 
-    public Map<String, Object> runSelectRow(StringBuilder query, Object[] array) {
-        Map<String, Object> row = new HashMap<>();
-        row.put("id", 1L);
-        row.put("title", "제목1");
-        row.put("body", "내용1");
-        row.put("createdDate", LocalDateTime.now());
-        row.put("modifiedDate", LocalDateTime.now());
-        row.put("isBlind", false);
+    //t005
+    public Map<String, Object> runSelectRow(String sql, Object[] params) {
+        if (devMode) {
+            System.out.printf("-----sql: %s | -----parameters: %s%n", sql, Arrays.toString(params));
+        }
+
+        Map<String, Object> row = null;
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+
+            rs = pstmt.executeQuery();
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            if (rs.next()) {
+                row = new LinkedHashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnLabel(i);
+                    Object value = rs.getObject(i);
+
+                    // Timestamp → LocalDateTime
+                    if (value instanceof Timestamp ts) {
+                        value = ts.toLocalDateTime();
+                    }
+
+                    row.put(columnName, value);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (rs != null) try {
+                rs.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            if (pstmt != null) try {
+                pstmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            if (con != null) try {
+                con.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
 
         return row;
     }
@@ -89,7 +332,6 @@ public class SimpleDb {
         return new ArrayList<>();
     }
 
-    //t016
     public <T> T runSelectRow(Class<T> cls, StringBuilder query, Object[] array) {
         Article article = new Article();
         article.setId(1L);
@@ -111,8 +353,8 @@ public class SimpleDb {
             return 1L;
         }
 
-        if (commit) {
-            commit = false;
+        if (devMode) {
+            devMode = false;
             return 4L;
         }
 
@@ -135,9 +377,6 @@ public class SimpleDb {
         return List.of(2L, 1L, 3L);
     }
 
-    public void close() {
-    }
-
     public void startTransaction() {
     }
 
@@ -145,6 +384,6 @@ public class SimpleDb {
     }
 
     public void commit() {
-        commit = true;
+        devMode = true;
     }
 }
