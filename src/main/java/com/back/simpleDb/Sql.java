@@ -30,50 +30,38 @@ public class Sql {
         return this;
     }
 
-    public long insert() {
-        return simpleDb.runInsert(query.toString(), params.toArray());
-    }
-
-    public int update() {
-        return simpleDb.runUpdate(query.toString(), params.toArray());
-    }
-
+    //t001
+    public long insert() { return simpleDb.runInsert(query.toString(), params.toArray()); }
+    //t002
+    public int update() { return simpleDb.runUpdate(query.toString(), params.toArray());}
+    //t003
     public int delete() {
         return simpleDb.runDelete(query.toString(), params.toArray());
     }
-
+    //t004
     public List<Map<String, Object>> selectRows() {
         return simpleDb.runSelectRows(query.toString(), params.toArray());
     }
 
-    public <T> List<T> selectRows(Class<T> cls) {
-        return simpleDb.runSelectRows(cls, query, params.toArray());
-    }
-
+    public <T> List<T> selectRows(Class<T> cls) { return simpleDb.runSelectRows(cls, query, params.toArray());}
+    //t005
     public Map<String, Object> selectRow() {
         return simpleDb.runSelectRow(query.toString(), params.toArray());
     }
-
     //t016
     public <T> T selectRow(Class<T> cls) {
         return simpleDb.runSelectRow(cls, query, params.toArray());
     }
-
-    public LocalDateTime selectDatetime() {
-        return simpleDb.runSelectDateTime(query, params.toArray());
-    }
-
-    public Long selectLong() {
-        return simpleDb.runSelectLong(query, params.toArray());
-    }
-
+    //t006
+    public LocalDateTime selectDatetime() { return simpleDb.runSelectDateTime(query.toString(), params.toArray()); }
+    //t007
+    public Long selectLong() { return simpleDb.runSelectLong(query.toString(), params.toArray());}
+    //t008
     public String selectString() {
-        return simpleDb.runSelectString(query, params.toArray());
+        return simpleDb.runSelectString(query.toString(), params.toArray());
     }
-
-    public Boolean selectBoolean() {
-        return simpleDb.runSelectBoolean(query, params.toArray());
-    }
+    //t009, t010
+    public Boolean selectBoolean() { return simpleDb.runSelectBoolean(query.toString(), params.toArray()); }
 
     public List<Long> selectLongs() {
         return simpleDb.runSelectLongs(query, params.toArray());
