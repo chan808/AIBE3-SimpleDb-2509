@@ -16,9 +16,10 @@ public class SimpleDb {
     private String url;
     private boolean devMode = false;
 
-    //스레드별 커넥션 관리
+    //스레드별 값을 저장하는 저장소
     private ThreadLocal<Connection> conHolder = new ThreadLocal<>();
 
+    //DB 연결
     public SimpleDb(String host, String username, String password, String database) {
         this.host = host;
         this.username = username;
@@ -32,9 +33,10 @@ public class SimpleDb {
         this.devMode = b;
     }
 
-    //스레드별 커넥션 실행
+    //스레드별 DB 커넥션 관리
     private Connection getConnection() throws SQLException {
         Connection con = conHolder.get();
+        //커넥션 없거나 닫혀있으면 새로 연결
         if (con == null || con.isClosed()) {
             con = DriverManager.getConnection(url, username, password);
             conHolder.set(con);
@@ -49,13 +51,14 @@ public class SimpleDb {
             try {
                 if (!con.isClosed()) con.close();
             } catch (SQLException e) {
-                System.out.println("DB 연결 종료 중 오류 발생: " + e.getMessage());
+                System.out.println("DB 연결 종료 오류: " + e.getMessage());
             } finally {
                 conHolder.remove();
             }
         }
     }
 
+    //SQL문 실행 부분
     public void run(String sql, Object... params) {
         Connection con = null;
         PreparedStatement pstmt = null;
@@ -89,11 +92,18 @@ public class SimpleDb {
         T execute(PreparedStatement pstmt) throws SQLException;
     }
 
-    //
     private <T> T executeJdbc(String sql, Object[] params, PreparedStatementExecutor<T> executor) {
-        try (Connection con = getConnection();
-             PreparedStatement pstmt = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        Connection con = conHolder.get();
+        boolean newCon = false;
 
+        try {
+            if (con == null || con.isClosed()) {
+                con = DriverManager.getConnection(url, username, password);
+                newCon = true;
+                conHolder.set(con);
+            }
+
+            PreparedStatement pstmt = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             for (int i = 0; i < params.length; i++) {
                 pstmt.setObject(i + 1, params[i]);
             }
@@ -102,6 +112,11 @@ public class SimpleDb {
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
+
+        } finally {
+            if (newCon) {
+                try { con.close(); } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -187,7 +202,7 @@ public class SimpleDb {
     }
 
 
-    public <T> List<T> runSelectRows(Class<T> cls, StringBuilder query, Object[] array) {
+    public <T> List<T> runSelectRows(Class<T> cls, String sql, Object[] params) {
         if (cls == Article.class) {
             List<Article> rows = new ArrayList<>();
 
@@ -207,16 +222,26 @@ public class SimpleDb {
         return new ArrayList<>();
     }
 
-    public <T> T runSelectRow(Class<T> cls, StringBuilder query, Object[] array) {
-        Article article = new Article();
-        article.setId(1L);
-        article.setTitle("제목1");
-        article.setBody("내용1");
-        article.setCreatedDate(LocalDateTime.now());
-        article.setModifiedDate(LocalDateTime.now());
-        article.setBlind(false);
+    public <T> T runSelectRow(Class<T> cls, String sql, Object[] params) {
+        logSql(sql, params);
 
-        return (T) article;
+        return executeJdbc(sql, params, pstmt -> {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    if (cls == Article.class) {
+                        Article article = new Article();
+                        article.setId(rs.getLong("id"));
+                        article.setTitle(rs.getString("title"));
+                        article.setBody(rs.getString("body"));
+                        article.setCreatedDate(rs.getTimestamp("createdDate").toLocalDateTime());
+                        article.setModifiedDate(rs.getTimestamp("modifiedDate").toLocalDateTime());
+                        article.setBlind(rs.getBoolean("isBlind"));
+                        return (T) article;
+                    }
+                }
+                throw new IllegalStateException("조회 결과가 없습니다.");
+            }
+        });
     }
 
     public LocalDateTime runSelectDateTime(String sql, Object[] params) {
@@ -274,17 +299,46 @@ public class SimpleDb {
         });
     }
 
-    public List<Long> runSelectLongs(StringBuilder query, Object[] array) {
-        return List.of(2L, 1L, 3L);
+    public List<Long> runSelectLongs(String sql, Object[] params) {
+        logSql(sql, params);
+
+        return executeJdbc(sql, params, pstmt -> {
+            List<Long> result = new ArrayList<>();
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(rs.getLong("id"));
+                }
+            }
+            return result;
+        });
     }
 
     public void startTransaction() {
+        try {
+            Connection con = getConnection();
+            con.setAutoCommit(false);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void rollback() {
+        try {
+            Connection con = getConnection();
+            con.rollback();
+            con.setAutoCommit(true);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void commit() {
-        devMode = true;
+        try {
+            Connection con = getConnection();
+            con.commit();
+            con.setAutoCommit(true);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
