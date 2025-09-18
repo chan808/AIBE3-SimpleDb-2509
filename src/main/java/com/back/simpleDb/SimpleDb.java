@@ -239,7 +239,7 @@ public class SimpleDb {
         return executeJdbc(sql, params, pstmt -> {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getLong("id");
+                    return rs.getLong(1);
                 }
                 throw new IllegalStateException("오류");
             }

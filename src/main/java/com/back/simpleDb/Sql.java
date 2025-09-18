@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,10 @@ public class Sql {
         return this;
     }
 
-    public Sql appendIn(String s, Object... params) {
+    public Sql appendIn(String sqlPart, Object... params) {
+        query.append(" ").append(sqlPart.replace("?",
+                String.join(",", Collections.nCopies(params.length, "?"))));
+        Collections.addAll(this.params, params);
         return this;
     }
 
